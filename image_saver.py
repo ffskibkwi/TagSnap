@@ -44,8 +44,9 @@ class Gemini_model:
 class ClipboardApp:
     def __init__(self, root, g_model):
         self.root = root
-        self.root.title("增强版剪贴板查看器")
+        self.root.title("TagSnap")
         self.image_reference = None
+        self.root.iconbitmap('tagsnap.ico')
 
         # 创建显示区域
         self.display_area = ttk.Label(root)
