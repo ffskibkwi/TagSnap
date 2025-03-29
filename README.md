@@ -1,2 +1,2 @@
 # TagSnap
-AI tag generator
+AI tag geneartor

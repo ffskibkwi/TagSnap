@@ -1,0 +1,6 @@
+# 忽略配置文件
+config.ini
+
+# Python开发环境相关忽略项
+__pycache__/
+.Python
