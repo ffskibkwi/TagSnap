@@ -115,9 +115,9 @@ class ClipboardApp:
             # 显示处理后的图片
             self.show_image(image)
             img_sum = g_model.image_load(image).text
-            img_cata = g_model.category_judge(image).text
+            img_cate = g_model.category_judge(image).text
             img_tags = g_model.tag_analyse(img_sum).text
-            create_md_file(f"{notedir}\{img_filename}.md", f"images/{img_filename}.png", img_cata, img_tags, img_sum)
+            create_md_file(f"{notedir}\{img_filename}.md", f"images/{img_filename}.png", img_cate, img_tags, img_sum)
 
 
         except Exception as e:
@@ -151,15 +151,15 @@ class ClipboardApp:
         self.status.config(text=message)
         self.root.after(5000, lambda: self.status.config(text="就绪"))
 
-def create_md_file(filename, image_file, catagory, tags, summary):
+def create_md_file(filename, image_file, category, tags, summary):
     # 获取当前日期
     current_date = datetime.datetime.now().strftime("%Y-%m-%d")
     
     # 构建文件内容
     md_content = f"""---
+category: {category}
 tags: {tags}
 created: {current_date}
-catagory: {catagory}
 ---
 ![[{image_file}]]
 {summary}"""
