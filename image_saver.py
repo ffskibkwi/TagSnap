@@ -48,9 +48,17 @@ class ClipboardApp:
         self.image_reference = None
         self.root.iconbitmap('tagsnap.ico')
 
+        # 创建主框架
+        self.main_frame = ttk.Frame(root)
+        self.main_frame.pack(expand=True, fill='both')
+
+        # 创建显示区域框架
+        self.display_frame = ttk.Frame(self.main_frame)
+        self.display_frame.pack(expand=True, fill='both', pady=10)
+
         # 创建显示区域
-        self.display_area = ttk.Label(root)
-        self.display_area.pack(padx=10, pady=10, expand=True, fill='both')
+        self.display_area = ttk.Label(self.display_frame)
+        self.display_area.pack(expand=True)
 
         # 状态栏
         self.status = ttk.Label(root, text="就绪", foreground="gray")
@@ -60,11 +68,32 @@ class ClipboardApp:
         self.root.bind('<Control-v>', self.paste_content)
         self.root.bind('<Command-v>', self.paste_content)
 
-        # 提示标签
-        ttk.Label(root, text="使用 Ctrl+V 粘贴内容", foreground="gray").pack()
+        # 创建标签框架
+        self.labels_frame = ttk.Frame(root)
+        self.labels_frame.pack(fill='x', padx=10, pady=5)
+
+        # 分类标签
+        self.category_label = ttk.Label(self.labels_frame, wraplength=640)
+        self.category_label.pack(pady=2)
+
+        # 标签标签
+        self.tags_label = ttk.Label(self.labels_frame, wraplength=640)
+        self.tags_label.pack(pady=2)
+
+        # 提示标签（图片描述）
+        self.hint_label = ttk.Label(self.labels_frame, text="使用 Ctrl+V 粘贴内容", foreground="gray", wraplength=640)
+        self.hint_label.pack(pady=2)
 
         #Gemini
         self.g_model = g_model
+
+        # 绑定窗口大小变化事件
+        self.root.bind('<Configure>', self.on_window_resize)
+
+    def on_window_resize(self, event):
+        """处理窗口大小变化事件"""
+        if hasattr(self, 'current_image'):
+            self.show_image(self.current_image)
 
     def paste_content(self, event=None):
         """处理粘贴操作的核心方法"""
@@ -120,6 +149,11 @@ class ClipboardApp:
             img_tags = g_model.tag_analyse(img_sum).text
             create_md_file(f"{notedir}\{img_filename}.md", f"images/{img_filename}.png", img_cate, img_tags, img_sum)
             self.update_status(f"保存成功")
+            
+            # 更新所有标签内容
+            self.category_label.config(text=f"分类：{img_cate}")
+            self.tags_label.config(text=f"标签：{img_tags}")
+            self.hint_label.config(text=f"描述：{img_sum}")
 
         except Exception as e:
             self.update_status(f"保存失败: {str(e)}")
@@ -133,15 +167,32 @@ class ClipboardApp:
     def show_image(self, image):
         """显示图片并保持比例"""
         try:
-            # 调整图片尺寸
-            width, height = image.size
-            max_size = 600
-            if max(width, height) > max_size:
-                ratio = max_size / max(width, height)
-                new_size = (int(width*ratio), int(height*ratio))
-                image = image.resize(new_size, Image.Resampling.LANCZOS)
+            # 保存当前图片以供重绘使用
+            self.current_image = image
             
-            tk_image = ImageTk.PhotoImage(image)
+            # 获取窗口大小
+            window_width = self.root.winfo_width()
+            window_height = self.root.winfo_height()
+            
+            # 设置显示尺寸为窗口大小的62%
+            display_width = int(window_width * 0.62)
+            display_height = int(window_height * 0.62)
+            
+            # 计算缩放比例
+            img_width, img_height = image.size
+            width_ratio = display_width / img_width
+            height_ratio = display_height / img_height
+            ratio = min(width_ratio, height_ratio)
+            
+            # 计算新的尺寸
+            new_width = int(img_width * ratio)
+            new_height = int(img_height * ratio)
+            
+            # 调整图片大小
+            resized_image = image.resize((new_width, new_height), Image.Resampling.LANCZOS)
+            
+            # 创建PhotoImage并显示
+            tk_image = ImageTk.PhotoImage(resized_image)
             self.display_area.config(image=tk_image, text='')
             self.image_reference = tk_image
         except Exception as e:
