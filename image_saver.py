@@ -8,6 +8,7 @@ import keyboard
 import pystray
 from PIL import Image
 import threading
+import sys
 
 import google.generativeai as genai
 
@@ -72,6 +73,9 @@ class Gemini_model:
 
 class ClipboardApp:
     def __init__(self, root, g_model):
+        # 新增退出状态标记
+        self._exiting = False
+        
         self.root = root
         self.root.title("TagSnap")
         self.image_reference = None
@@ -79,14 +83,14 @@ class ClipboardApp:
         
         # 设置窗口关闭按钮的行为
         self.root.protocol('WM_DELETE_WINDOW', self.safe_hide_window)
-        self.root.bind('<FocusIn>', self._sync_window_state)  # 新增窗口焦点同步
+        self.root.bind('<FocusIn>', self._sync_window_state)
         
         # 初始化托盘图标变量
         self.icon = None
         self.icon_thread = None
         self.icon_running_event = threading.Event()
         self.icon_lock = threading.Lock()
-        self.icon_visible = threading.Event()  # 新增图标可见状态标记
+        self.icon_visible = threading.Event()
         
         # 创建系统托盘图标
         self.create_tray_icon()
@@ -287,26 +291,73 @@ class ClipboardApp:
             self.icon_running_event.clear()
             self._cleanup_icon_resources()
     def quit_app(self):
-        """彻底退出程序"""
-        with self.icon_lock:
-            if self.icon_running_event.is_set():
-                ctypes.windll.user32.PostMessageW(
-                    self.icon._hwnd,
-                    0x0010,  # WM_CLOSE
-                    0, 0)
-                self.icon_running_event.wait(timeout=0.5)
+        """安全退出程序（修复组件访问问题）"""
+        # 标记退出状态
+        self._exiting = True
         
-        # 清理资源
-        self.root.destroy()
-        os._exit(0)
+        # 使用after_idle确保在主线程中执行清理操作
+        if threading.current_thread() is not threading.main_thread():
+            self.root.after_idle(self._perform_cleanup)
+            # 停止托盘图标
+            with self.icon_lock:
+                if self.icon_running_event.is_set():
+                    self._stop_tray_icon()
+        else:
+            self._perform_cleanup()
+
+    def _perform_cleanup(self):
+        """在主线程中执行清理操作"""
+        try:
+            # 解除全局快捷键
+            keyboard.unhook_all_hotkeys()
+            
+            # 取消所有pending的after事件
+            try:
+                for timer_id in self.root.tk.eval('after info').split():
+                    self.root.after_cancel(timer_id)
+            except Exception:
+                pass  # 忽略可能的Tcl错误
+            
+            # 安全销毁窗口组件
+            self._safe_destroy_widgets()
+            
+            # 销毁主窗口
+            if self.root.winfo_exists():
+                self.root.destroy()
+            
+            # 正常退出程序
+            self.root.after(100, lambda: os._exit(0))
+        except Exception as e:
+            print(f"清理过程中出现错误: {str(e)}")
+            os._exit(1)  # 强制退出
+
+    def _safe_destroy_widgets(self):
+        """安全销毁UI组件（防止二次访问）"""
+        widgets = [
+            self.display_area, self.status, 
+            self.category_label, self.tags_label,
+            self.hint_label, self.main_frame,
+            self.display_frame, self.labels_frame
+        ]
+        
+        for widget in widgets:
+            try:
+                if widget.winfo_exists():
+                    widget.destroy()
+            except tk.TclError:
+                pass
 
     def on_window_resize(self, event):
-        """处理窗口大小变化事件"""
+        """增强的窗口缩放处理"""
+        if self._exiting or not self.root.winfo_exists():
+            return
         if hasattr(self, 'current_image'):
             self.show_image(self.current_image)
 
     def paste_content(self, event=None):
         """处理粘贴操作的核心方法"""
+        if self._exiting:
+            return
         try:
             # 先尝试获取图片内容
             clipboard_content = ImageGrab.grabclipboard()
@@ -374,8 +425,10 @@ class ClipboardApp:
         self.display_area.config(text=text, image='')
         self.update_status("文本内容已显示")
 
-    def show_image(self, image):
-        """显示图片并保持比例"""
+    def show_image(self, image=None):
+        """安全的图片显示方法"""
+        if self._exiting or not self.display_area.winfo_exists():
+            return
         try:
             # 保存当前图片以供重绘使用
             self.current_image = image
@@ -405,12 +458,18 @@ class ClipboardApp:
             tk_image = ImageTk.PhotoImage(resized_image)
             self.display_area.config(image=tk_image, text='')
             self.image_reference = tk_image
-        except Exception as e:
-            self.update_status(f"显示图片失败: {str(e)}")
+        except tk.TclError as e:
+            if not self._exiting:  # 仅在非退出状态记录错误
+                self.update_status(f"显示图片失败: {str(e)}")
 
     def update_status(self, message):
-        """更新状态栏"""
-        self.status.config(text=message)
+        """安全的状态更新方法"""
+        if self._exiting or not self.status.winfo_exists():
+            return
+        try:
+            self.status.config(text=message)
+        except tk.TclError:
+            pass
 
 def create_md_file(filename, image_file, category, tags, summary):
     # 获取当前日期
