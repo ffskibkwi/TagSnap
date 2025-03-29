@@ -4,12 +4,41 @@ from PIL import Image, ImageTk, ImageGrab
 import os
 import time
 import uuid
+import keyboard
+import pystray
+from PIL import Image
+import threading
 
 import google.generativeai as genai
 
 import datetime #For save md
 
 import configparser #For ini
+
+import ctypes
+from ctypes import wintypes
+
+class MSG(ctypes.Structure):
+    _fields_ = [
+        ("hWnd", wintypes.HWND),
+        ("message", wintypes.UINT),
+        ("wParam", wintypes.WPARAM),
+        ("lParam", wintypes.LPARAM),
+        ("time", wintypes.DWORD),
+        ("pt", wintypes.POINT),
+    ]
+PM_REMOVE = 0x0001
+
+def _pump_messages():
+    """安全处理消息队列的替代方案"""
+    msg = MSG()
+    while ctypes.windll.user32.PeekMessageW(
+        ctypes.byref(msg), 
+        None, 
+        0, 0, 
+        PM_REMOVE
+    ):
+        ctypes.windll.user32.DispatchMessageW(ctypes.byref(msg))
 
 # 设置代理（需替换为你的实际代理地址）
 os.environ["http_proxy"] = "http://127.0.0.1:1080"  # HTTP代理
@@ -47,14 +76,31 @@ class ClipboardApp:
         self.root.title("TagSnap")
         self.image_reference = None
         self.root.iconbitmap('tagsnap.ico')
-
+        
+        # 设置窗口关闭按钮的行为
+        self.root.protocol('WM_DELETE_WINDOW', self.safe_hide_window)
+        self.root.bind('<FocusIn>', self._sync_window_state)  # 新增窗口焦点同步
+        
+        # 初始化托盘图标变量
+        self.icon = None
+        self.icon_thread = None
+        self.icon_running_event = threading.Event()
+        self.icon_lock = threading.Lock()
+        self.icon_visible = threading.Event()  # 新增图标可见状态标记
+        
+        # 创建系统托盘图标
+        self.create_tray_icon()
+        
+        # 注册全局快捷键
+        keyboard.add_hotkey('ctrl+shift+z', self._safe_show_window_wrapper)
+        
         # 创建主框架
         self.main_frame = ttk.Frame(root)
         self.main_frame.pack(expand=True, fill='both')
 
         # 创建显示区域框架
         self.display_frame = ttk.Frame(self.main_frame)
-        self.display_frame.pack(expand=True, fill='both', pady=5)  # 减小pady
+        self.display_frame.pack(expand=True, fill='both', pady=5)
 
         # 创建显示区域
         self.display_area = ttk.Label(self.display_frame)
@@ -70,28 +116,189 @@ class ClipboardApp:
 
         # 创建标签框架
         self.labels_frame = ttk.Frame(root)
-        self.labels_frame.pack(fill='x', padx=10, pady=2)  # 减小pady
+        self.labels_frame.pack(fill='x', padx=10, pady=2)
 
         # 设置字体
-        label_font = ('Microsoft YaHei', 10)  # 使用微软雅黑字体，大小为10
+        label_font = ('Microsoft YaHei', 10)
 
         # 分类标签
         self.category_label = ttk.Label(self.labels_frame, wraplength=640, font=label_font)
-        self.category_label.pack(pady=1)  # 减小pady
+        self.category_label.pack(pady=1)
 
         # 标签标签
         self.tags_label = ttk.Label(self.labels_frame, wraplength=640, font=label_font)
-        self.tags_label.pack(pady=1)  # 减小pady
+        self.tags_label.pack(pady=1)
 
         # 提示标签（图片描述）
         self.hint_label = ttk.Label(self.labels_frame, text="使用 Ctrl+V 粘贴内容", foreground="gray", wraplength=640, font=label_font)
-        self.hint_label.pack(pady=1)  # 减小pady
+        self.hint_label.pack(pady=1)
 
         #Gemini
         self.g_model = g_model
 
         # 绑定窗口大小变化事件
         self.root.bind('<Configure>', self.on_window_resize)
+
+    def _safe_show_window_wrapper(self):
+            """带状态检查的快捷键包装器"""
+            if not self.icon_visible.is_set():
+                self.show_window()
+
+    def create_tray_icon(self):
+        """创建系统托盘图标"""
+        if self.icon is None:
+            try:
+                # 使用icon.png作为托盘图标
+                image = Image.open('icon.png')
+                menu = (
+                    pystray.MenuItem("显示", self.show_window),
+                    pystray.MenuItem("退出", self.quit_app)
+                )
+                self.icon = pystray.Icon("TagSnap", image, "TagSnap", menu)
+            except Exception as e:
+                # 如果找不到icon.png，使用默认的黑色图标
+                image = Image.new('RGB', (64, 64), 'black')
+                menu = (
+                    pystray.MenuItem("显示", self.show_window),
+                    pystray.MenuItem("退出", self.quit_app)
+                )
+                self.icon = pystray.Icon("TagSnap", image, "TagSnap", menu)
+                print(f"无法加载icon.png: {str(e)}")
+
+    def _run_icon(self):
+        """在单独的线程中运行托盘图标"""
+        try:
+            self.icon.run()
+        finally:
+            self.is_icon_running = False
+
+    def _cleanup_icon_resources(self):
+        """增强资源清理（添加状态标记）"""
+        try:
+            if self.icon and hasattr(self.icon, '_hwnd'):
+                # 先停止消息循环
+                if not getattr(self.icon, '_stopped', True):
+                    ctypes.windll.user32.PostMessageW(
+                        self.icon._hwnd,
+                        0x0010, 0, 0)  # WM_CLOSE
+                # 清理句柄
+                if self.icon._hwnd:
+                    ctypes.windll.user32.DestroyWindow(self.icon._hwnd)
+                # 清除窗口类
+                if self.icon._atom:
+                    ctypes.windll.user32.UnregisterClassW(
+                        self.icon._atom,
+                        ctypes.c_uint(0))
+        except Exception as e:
+            if not (isinstance(e, OSError) and e.winerror == 1400):
+                print(f"资源清理失败: {str(e)}")
+        finally:
+            # 确保释放所有引用
+            self.icon = None
+            self.icon_running_event.clear()
+    def _sync_window_state(self, event=None):
+        """同步窗口状态到托盘图标"""
+        if self.root.winfo_viewable() and self.icon_running_event.is_set():
+            self.icon_running_event.clear()
+            self._cleanup_icon_resources()
+    def safe_hide_window(self):
+        """安全的窗口隐藏入口（优化状态判断）"""
+        if self.root.winfo_viewable():  # 改用更可靠的可见性判断
+            self.hide_window()
+        else:
+            self.root.withdraw()
+    def hide_window(self):
+        """安全隐藏窗口到托盘（修复图标生成逻辑）"""
+        with self.icon_lock:
+            # 终止可能残留的托盘实例
+            if self.icon_running_event.is_set():
+                self._stop_tray_icon()
+            
+            if not self.icon_running_event.is_set():
+                self.root.withdraw()
+                # 仅在需要时创建新图标
+                if self.icon is None:
+                    self.create_tray_icon()
+                self.icon_running_event.set()
+                self.icon_thread = threading.Thread(
+                    target=self._run_icon_safe,
+                    daemon=True)
+                self.icon_thread.start()
+    def _stop_tray_icon(self):
+        """优化图标终止方法（修复消息泵问题）"""
+        try:
+            # 先标记为已停止
+            if self.icon:
+                self.icon._stopped = True
+            
+            # 发送退出消息
+            if self.icon and hasattr(self.icon, '_hwnd') and self.icon._hwnd:
+                for msg in [0x0010, 0x0012]:  # WM_CLOSE, WM_QUIT
+                    ctypes.windll.user32.PostMessageW(
+                        self.icon._hwnd,
+                        msg, 0, 0)
+                
+                # 替换消息泵处理
+                for _ in range(3):
+                    _pump_messages()  # 使用自定义消息泵
+                    time.sleep(0.1)
+        except Exception as e:
+            if not (isinstance(e, OSError) and e.winerror == 1400):
+                print(f"终止托盘异常: {str(e)}")
+        finally:
+            self._cleanup_icon_resources()
+    def show_window(self):
+        """安全显示主窗口（增强同步机制）"""
+        # 增加重入锁保护
+        with self.icon_lock:
+            # 强制终止可能残留的图标
+            self._stop_tray_icon()
+            
+            # 确保窗口状态正确
+            if not self.root.winfo_viewable():
+                self.root.deiconify()
+                
+            # 窗口置顶逻辑
+            self.root.attributes('-topmost', 1)
+            self.root.focus_force()
+            self.root.lift()
+            
+            # 延迟重置置顶属性
+            self.root.after(200, lambda: self.root.attributes('-topmost', 0))
+            
+            # 更新图标可见状态
+            self.icon_visible.clear()
+    def _run_icon_safe(self):
+        """带保护机制的图标运行（修复无效句柄问题）"""
+        try:
+            # 添加有效性检查
+            if self.icon and not getattr(self.icon, '_stopped', False):
+                # 设置运行标记防止重复启动
+                self.icon._stopped = False
+                self.icon.run()
+        except Exception as e:
+            # 忽略特定错误代码1400
+            if not (isinstance(e, OSError) and e.winerror == 1400):
+                print(f"托盘运行异常: {str(e)}")
+        finally:
+            # 强制标记为已停止
+            if self.icon:
+                self.icon._stopped = True
+            self.icon_running_event.clear()
+            self._cleanup_icon_resources()
+    def quit_app(self):
+        """彻底退出程序"""
+        with self.icon_lock:
+            if self.icon_running_event.is_set():
+                ctypes.windll.user32.PostMessageW(
+                    self.icon._hwnd,
+                    0x0010,  # WM_CLOSE
+                    0, 0)
+                self.icon_running_event.wait(timeout=0.5)
+        
+        # 清理资源
+        self.root.destroy()
+        os._exit(0)
 
     def on_window_resize(self, event):
         """处理窗口大小变化事件"""
