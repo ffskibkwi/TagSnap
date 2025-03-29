@@ -54,7 +54,7 @@ class ClipboardApp:
 
         # 创建显示区域框架
         self.display_frame = ttk.Frame(self.main_frame)
-        self.display_frame.pack(expand=True, fill='both', pady=10)
+        self.display_frame.pack(expand=True, fill='both', pady=5)  # 减小pady
 
         # 创建显示区域
         self.display_area = ttk.Label(self.display_frame)
@@ -70,19 +70,22 @@ class ClipboardApp:
 
         # 创建标签框架
         self.labels_frame = ttk.Frame(root)
-        self.labels_frame.pack(fill='x', padx=10, pady=5)
+        self.labels_frame.pack(fill='x', padx=10, pady=2)  # 减小pady
+
+        # 设置字体
+        label_font = ('Microsoft YaHei', 10)  # 使用微软雅黑字体，大小为10
 
         # 分类标签
-        self.category_label = ttk.Label(self.labels_frame, wraplength=640)
-        self.category_label.pack(pady=2)
+        self.category_label = ttk.Label(self.labels_frame, wraplength=640, font=label_font)
+        self.category_label.pack(pady=1)  # 减小pady
 
         # 标签标签
-        self.tags_label = ttk.Label(self.labels_frame, wraplength=640)
-        self.tags_label.pack(pady=2)
+        self.tags_label = ttk.Label(self.labels_frame, wraplength=640, font=label_font)
+        self.tags_label.pack(pady=1)  # 减小pady
 
         # 提示标签（图片描述）
-        self.hint_label = ttk.Label(self.labels_frame, text="使用 Ctrl+V 粘贴内容", foreground="gray", wraplength=640)
-        self.hint_label.pack(pady=2)
+        self.hint_label = ttk.Label(self.labels_frame, text="使用 Ctrl+V 粘贴内容", foreground="gray", wraplength=640, font=label_font)
+        self.hint_label.pack(pady=1)  # 减小pady
 
         #Gemini
         self.g_model = g_model
@@ -144,12 +147,12 @@ class ClipboardApp:
             
             # 显示处理后的图片
             self.show_image(image)
-            img_sum = g_model.image_load(image).text
-            img_cate = g_model.category_judge(image).text
-            img_tags = g_model.tag_analyse(img_sum).text
+            img_sum = self.g_model.image_load(image).text
+            img_cate = self.g_model.category_judge(image).text
+            img_tags = self.g_model.tag_analyse(img_sum).text
             create_md_file(f"{notedir}\{img_filename}.md", f"images/{img_filename}.png", img_cate, img_tags, img_sum)
-            self.update_status(f"保存成功")
-            
+            self.update_status(f"已保存为 {img_filename}")
+
             # 更新所有标签内容
             self.category_label.config(text=f"分类：{img_cate}")
             self.tags_label.config(text=f"标签：{img_tags}")
@@ -201,7 +204,6 @@ class ClipboardApp:
     def update_status(self, message):
         """更新状态栏"""
         self.status.config(text=message)
-        self.root.after(5000, lambda: self.status.config(text="就绪"))
 
 def create_md_file(filename, image_file, category, tags, summary):
     # 获取当前日期
