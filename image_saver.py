@@ -119,7 +119,7 @@ class ClipboardApp:
             img_cate = g_model.category_judge(image).text
             img_tags = g_model.tag_analyse(img_sum).text
             create_md_file(f"{notedir}\{img_filename}.md", f"images/{img_filename}.png", img_cate, img_tags, img_sum)
-
+            self.update_status(f"保存成功")
 
         except Exception as e:
             self.update_status(f"保存失败: {str(e)}")
