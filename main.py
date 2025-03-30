@@ -20,7 +20,7 @@ class TagSnap:
         self.root = tk.Tk()
         
         # 确保目录存在
-        config.ensure_directories(config.DEFAULT_NOTE_DIR)
+        config.ensure_directories()
         
         # 初始化组件
         self.init_components()
@@ -34,10 +34,10 @@ class TagSnap:
         self.gemini = GeminiHandler()
         
         # 初始化图片处理器
-        self.image_processor = ImageProcessor(config.DEFAULT_NOTE_DIR)
+        self.image_processor = ImageProcessor(config.IMAGE_NOTE_PATH)
         
         # 初始化文本处理器
-        self.text_processor = TextProcessor(config.DEFAULT_NOTE_DIR)
+        self.text_processor = TextProcessor(config.TEXT_NOTE_PATH)
         
         # 初始化UI
         self.ui = MainUI(self.root, self.handle_paste)
@@ -122,7 +122,7 @@ class TagSnap:
             
             # 生成新的markdown文件路径
             md_filename = f"{title}.md"
-            md_path = os.path.join(config.DEFAULT_NOTE_DIR, md_filename)
+            md_path = os.path.join(config.TEXT_NOTE_PATH, config.TEXT_SUBDIR, md_filename)
             
             # 创建处理后的markdown文件
             self.text_processor.create_md_file(

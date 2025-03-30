@@ -3,11 +3,12 @@ import re
 import time
 import uuid
 import datetime
+import config
 
 class TextProcessor:
     def __init__(self, note_dir):
         self.note_dir = note_dir
-        self.source_dir = os.path.join(note_dir, "source")
+        self.source_dir = os.path.join(note_dir, config.SOURCE_SUBDIR)
         os.makedirs(self.source_dir, exist_ok=True)
 
     def process_source(self, md_text, source_dir):

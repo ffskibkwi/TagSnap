@@ -15,12 +15,15 @@ APP_VERSION = "1.0.0"
 
 # 文件路径配置
 try:
-    DEFAULT_NOTE_DIR = config['paths']['default_note_dir']
+    IMAGE_NOTE_PATH = config['paths']['image_note_path']
+    TEXT_NOTE_PATH = config['paths']['text_note_path']
 except KeyError:
-    raise KeyError("请在 config.ini 文件的 [paths] 节中配置 default_note_dir")
+    raise KeyError("请在 config.ini 文件的 [paths] 节中配置 image_note_path 和 text_note_path")
 
-IMAGES_SUBDIR = "Images"
-IMAGES_ASSETS_SUBDIR = os.path.join(IMAGES_SUBDIR, "images")
+# 子目录配置
+IMAGES_ASSETS_SUBDIR = "images"  # 图片保存目录
+TEXT_SUBDIR = "Notes"  # 文本笔记保存目录
+SOURCE_SUBDIR = "source"  # 原始文本保存目录
 
 # 代理配置
 PROXY_CONFIG = {
@@ -44,11 +47,15 @@ def setup_proxy():
     os.environ["http_proxy"] = PROXY_CONFIG["http"]
     os.environ["https_proxy"] = PROXY_CONFIG["https"]
 
-def get_image_save_path(note_dir):
+def get_image_save_path():
     """获取图片保存路径"""
-    return os.path.join(note_dir, IMAGES_ASSETS_SUBDIR)
+    return os.path.join(IMAGE_NOTE_PATH, IMAGES_ASSETS_SUBDIR)
 
-def ensure_directories(note_dir):
+def ensure_directories():
     """确保必要的目录存在"""
-    os.makedirs(os.path.join(note_dir, IMAGES_SUBDIR), exist_ok=True)
-    os.makedirs(os.path.join(note_dir, IMAGES_ASSETS_SUBDIR), exist_ok=True) 
+    # 图片相关目录
+    os.makedirs(os.path.join(IMAGE_NOTE_PATH, IMAGES_ASSETS_SUBDIR), exist_ok=True)
+    
+    # 文本相关目录
+    os.makedirs(os.path.join(TEXT_NOTE_PATH, TEXT_SUBDIR), exist_ok=True)
+    os.makedirs(os.path.join(TEXT_NOTE_PATH, SOURCE_SUBDIR), exist_ok=True) 

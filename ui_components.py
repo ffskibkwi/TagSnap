@@ -40,13 +40,19 @@ class MainUI:
         self.display_frame = ttk.Frame(self.main_frame)
         self.display_frame.pack(expand=True, fill='both', pady=5)
 
-        # 显示区域（使用Text组件替代Label以获得更好的文本控制）
-        self.display_area = tk.Text(self.display_frame, wrap=tk.WORD, 
-                                  font=('Microsoft YaHei', 12),
-                                  borderwidth=0, highlightthickness=0,
-                                  background=self.root.cget('bg'))  # 使用与根窗口相同的背景色
-        self.display_area.pack(expand=True, fill='both')
-        self.display_area.configure(state='disabled')  # 默认禁用编辑
+        # 图片显示区域
+        self.image_label = ttk.Label(self.display_frame)
+        self.image_label.pack(expand=True)
+        self.image_label.pack_forget()  # 初始隐藏
+
+        # 文本显示区域
+        self.text_area = tk.Text(self.display_frame, wrap=tk.WORD, 
+                               font=('Microsoft YaHei', 12),
+                               borderwidth=0, highlightthickness=0,
+                               background=self.root.cget('bg'))
+        self.text_area.pack(expand=True, fill='both')
+        self.text_area.configure(state='disabled')
+        self.text_area.pack_forget()  # 初始隐藏
 
         # 状态栏
         self.status = ttk.Label(self.root, text="就绪", foreground="gray")
@@ -92,50 +98,68 @@ class MainUI:
 
     def show_text(self, text):
         """显示文本内容"""
+        # 隐藏图片显示区域
+        self.image_label.pack_forget()
+        
+        # 显示文本区域
+        self.text_area.pack(expand=True, fill='both')
+        
         # 启用文本框编辑
-        self.display_area.configure(state='normal')
+        self.text_area.configure(state='normal')
         
         # 清空当前内容
-        self.display_area.delete('1.0', tk.END)
+        self.text_area.delete('1.0', tk.END)
         
         # 插入新内容
-        self.display_area.insert('1.0', text)
+        self.text_area.insert('1.0', text)
         
         # 禁用文本框编辑
-        self.display_area.configure(state='disabled')
+        self.text_area.configure(state='disabled')
         
         self.update_status("文本内容已显示")
 
     def show_analysis_result(self, text):
         """显示分析结果"""
+        # 隐藏图片显示区域
+        self.image_label.pack_forget()
+        
+        # 显示文本区域
+        self.text_area.pack(expand=True, fill='both')
+        
         # 启用文本框编辑
-        self.display_area.configure(state='normal')
+        self.text_area.configure(state='normal')
         
         # 清空当前内容
-        self.display_area.delete('1.0', tk.END)
+        self.text_area.delete('1.0', tk.END)
         
         # 插入新内容
-        self.display_area.insert('1.0', text)
+        self.text_area.insert('1.0', text)
         
         # 文本居中对齐
-        self.display_area.tag_add('center', '1.0', tk.END)
-        self.display_area.tag_configure('center', justify='center')
+        self.text_area.tag_add('center', '1.0', tk.END)
+        self.text_area.tag_configure('center', justify='center')
         
         # 设置背景色与窗口一致
-        self.display_area.configure(background=self.root.cget('bg'))
+        self.text_area.configure(background=self.root.cget('bg'))
         
         # 禁用文本框编辑
-        self.display_area.configure(state='disabled')
+        self.text_area.configure(state='disabled')
         
         self.update_status("分析结果已显示")
 
     def show_image(self, image):
         """显示图片"""
-        if self._exiting or not self.display_area.winfo_exists():
+        if self._exiting or not self.image_label.winfo_exists():
             return
             
         try:
             self.current_image = image
+            
+            # 隐藏文本区域
+            self.text_area.pack_forget()
+            
+            # 显示图片区域
+            self.image_label.pack(expand=True)
             
             # 获取窗口大小
             window_width = self.root.winfo_width()
@@ -160,18 +184,7 @@ class MainUI:
             
             # 创建PhotoImage并显示
             tk_image = ImageTk.PhotoImage(resized_image)
-            
-            # 清空并显示图片
-            self.display_area.configure(state='normal')
-            self.display_area.delete('1.0', tk.END)
-            
-            # 计算居中位置
-            self.display_area.image_create('1.0', image=tk_image, align='center')
-            
-            # 设置背景色与窗口一致
-            self.display_area.configure(background=self.root.cget('bg'))
-            self.display_area.configure(state='disabled')
-            
+            self.image_label.config(image=tk_image)
             self.image_reference = tk_image
             
         except tk.TclError as e:
@@ -197,7 +210,7 @@ class MainUI:
         """处理窗口大小变化"""
         if self._exiting or not self.root.winfo_exists():
             return
-        if hasattr(self, 'current_image') and self.current_image:
+        if hasattr(self, 'current_image') and self.current_image and not self.image_label.winfo_ismapped():
             self.show_image(self.current_image)
 
     def show_window(self):
