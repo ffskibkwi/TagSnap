@@ -22,7 +22,6 @@ except KeyError:
 
 # 子目录配置
 IMAGES_ASSETS_SUBDIR = "images"  # 图片保存目录
-TEXT_SUBDIR = "Notes"  # 文本笔记保存目录
 SOURCE_SUBDIR = "source"  # 原始文本保存目录
 
 # 代理配置
@@ -57,5 +56,4 @@ def ensure_directories():
     os.makedirs(os.path.join(IMAGE_NOTE_PATH, IMAGES_ASSETS_SUBDIR), exist_ok=True)
     
     # 文本相关目录
-    os.makedirs(os.path.join(TEXT_NOTE_PATH, TEXT_SUBDIR), exist_ok=True)
     os.makedirs(os.path.join(TEXT_NOTE_PATH, SOURCE_SUBDIR), exist_ok=True) 

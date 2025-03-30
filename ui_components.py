@@ -9,6 +9,7 @@ class MainUI:
         self.root.title("TagSnap")
         self.image_reference = None
         self.current_image = None
+        self.current_display = None  # 用于跟踪当前显示的内容类型
         self._exiting = False
         self.on_paste_callback = on_paste_callback
 
@@ -116,6 +117,9 @@ class MainUI:
         # 禁用文本框编辑
         self.text_area.configure(state='disabled')
         
+        # 标记当前显示的是文本
+        self.current_display = 'text'
+        
         self.update_status("文本内容已显示")
 
     def show_analysis_result(self, text):
@@ -144,6 +148,9 @@ class MainUI:
         
         # 禁用文本框编辑
         self.text_area.configure(state='disabled')
+        
+        # 标记当前显示的是文本
+        self.current_display = 'text'
         
         self.update_status("分析结果已显示")
 
@@ -187,6 +194,9 @@ class MainUI:
             self.image_label.config(image=tk_image)
             self.image_reference = tk_image
             
+            # 标记当前显示的是图片
+            self.current_display = 'image'
+            
         except tk.TclError as e:
             if not self._exiting:
                 self.update_status(f"显示图片失败: {str(e)}")
@@ -210,7 +220,8 @@ class MainUI:
         """处理窗口大小变化"""
         if self._exiting or not self.root.winfo_exists():
             return
-        if hasattr(self, 'current_image') and self.current_image and not self.image_label.winfo_ismapped():
+        # 只在当前显示的是图片时重新显示图片
+        if hasattr(self, 'current_image') and self.current_image and self.current_display == 'image':
             self.show_image(self.current_image)
 
     def show_window(self):

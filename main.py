@@ -122,7 +122,7 @@ class TagSnap:
             
             # 生成新的markdown文件路径
             md_filename = f"{title}.md"
-            md_path = os.path.join(config.TEXT_NOTE_PATH, config.TEXT_SUBDIR, md_filename)
+            md_path = os.path.join(config.TEXT_NOTE_PATH, md_filename)
             
             # 创建处理后的markdown文件
             self.text_processor.create_md_file(
