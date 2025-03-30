@@ -31,9 +31,9 @@ class GeminiHandler:
         
     def analyze_image(self, image):
         """分析图片内容"""
-        summary = self.image_load(image)
-        category = self.category_judge(image)
-        tags = self.tag_analyse(summary.text)
+        summary = self.image_summary_analyze(image)
+        category = self.image_category_judge(image)
+        tags = self.image_tag_analyze(summary.text)
         
         return {
             'summary': summary.text,
@@ -41,7 +41,7 @@ class GeminiHandler:
             'tags': tags.text
         }
 
-    def image_load(self, image):
+    def image_summary_analyze(self, image):
         """获取图片描述"""
         return self.model.generate_content([
             "请认真分析这张图片，用中文概述它包括它可能出现的场合以及具体的内容，"
@@ -49,14 +49,14 @@ class GeminiHandler:
             image
         ])
 
-    def tag_analyse(self, image_summary):
+    def image_tag_analyze(self, image_summary):
         """分析图片标签"""
         return self.model.generate_content([
             "概括这段话的若干个关键词，每个关键词用空格分隔，回答不要加入问候语，只回答我提问的内容", 
             image_summary
         ])
 
-    def category_judge(self, image):
+    def image_category_judge(self, image):
         """判断图片类别"""
         return self.model.generate_content([
             "请认真分析这张图片，判断这个图片属于[动漫截图/文字材料/影视截图/实拍照片/meme图/其他图片]中的具体哪一个类型，"
