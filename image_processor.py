@@ -7,7 +7,7 @@ from PIL import Image
 class ImageProcessor:
     def __init__(self, note_dir):
         self.note_dir = note_dir
-        self.images_dir = os.path.join(note_dir, "Images", "images")
+        self.images_dir = os.path.join(note_dir, "images")
         os.makedirs(self.images_dir, exist_ok=True)
 
     def save_image(self, image):
@@ -16,7 +16,7 @@ class ImageProcessor:
             # 生成唯一文件名
             img_filename = f"image_{int(time.time())}_{uuid.uuid4().hex[:6]}"
             image_path = os.path.join(self.images_dir, f"{img_filename}.png")
-            md_path = os.path.join(self.note_dir, "Images", f"{img_filename}.md")
+            md_path = os.path.join(self.note_dir, f"{img_filename}.md")
             
             # 保存图片
             image.save(image_path)

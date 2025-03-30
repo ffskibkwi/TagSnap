@@ -91,6 +91,21 @@ class MainUI:
         self.display_area.config(text=text, image='')
         self.update_status("文本内容已显示")
 
+    def show_analysis_result(self, text):
+        """显示分析结果"""
+        # 设置字体和样式
+        style = ttk.Style()
+        style.configure('Analysis.TLabel', font=('Microsoft YaHei', 12), wraplength=600, justify='left')
+        
+        # 配置显示区域
+        self.display_area.config(
+            text=text,
+            image='',
+            style='Analysis.TLabel'
+        )
+        
+        self.update_status("分析结果已显示")
+
     def show_image(self, image):
         """显示图片"""
         if self._exiting or not self.display_area.winfo_exists():

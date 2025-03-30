@@ -6,6 +6,7 @@ import sys
 
 from gemini_handler import GeminiHandler
 from image_processor import ImageProcessor
+from text_processor import TextProcessor
 from window_manager import WindowManager
 from ui_components import MainUI
 import config
@@ -34,6 +35,9 @@ class TagSnap:
         
         # 初始化图片处理器
         self.image_processor = ImageProcessor(config.DEFAULT_NOTE_DIR)
+        
+        # 初始化文本处理器
+        self.text_processor = TextProcessor(config.DEFAULT_NOTE_DIR)
         
         # 初始化UI
         self.ui = MainUI(self.root, self.handle_paste)
@@ -64,7 +68,7 @@ class TagSnap:
             # 尝试获取文本
             try:
                 text = self.root.clipboard_get()
-                self.ui.show_text(text)
+                self.process_text(text)
             except tk.TclError:
                 self.ui.update_status("剪贴板内容无法识别")
                 
@@ -101,6 +105,54 @@ class TagSnap:
             
             # 更新状态
             self.ui.update_status(f"已保存为 {save_info['filename']}")
+            
+        except Exception as e:
+            self.ui.update_status(f"处理失败: {str(e)}")
+
+    def process_text(self, text):
+        """处理文本"""
+        try:
+            # 处理原始文本
+            title = self.text_processor.process_source(text, self.text_processor.source_dir)
+            
+            # 使用AI分析文本
+            category = self.gemini.md_category_judge(text)
+            summary = self.gemini.md_summary_analyze(text)
+            tags = self.gemini.md_tag_analyze(text)
+            
+            # 生成新的markdown文件路径
+            md_filename = f"{title}.md"
+            md_path = os.path.join(config.DEFAULT_NOTE_DIR, md_filename)
+            
+            # 创建处理后的markdown文件
+            self.text_processor.create_md_file(
+                md_path,
+                title,
+                category.text,
+                tags.text,
+                summary.text
+            )
+            
+            # 构建显示文本
+            display_text = f"""标题：{title}
+分类：{category.text}
+标签：{tags.text}
+
+摘要：
+{summary.text}"""
+            
+            # 显示分析结果
+            self.ui.show_analysis_result(display_text)
+            
+            # 更新UI标签
+            self.ui.update_labels(
+                category.text,
+                tags.text,
+                summary.text
+            )
+            
+            # 更新状态
+            self.ui.update_status(f"已保存为 {md_filename}")
             
         except Exception as e:
             self.ui.update_status(f"处理失败: {str(e)}")
