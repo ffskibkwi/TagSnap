@@ -67,7 +67,7 @@ class GeminiHandler:
     def md_category_judge(self, md_text):
         """判断文本类别"""
         return self.model.generate_content([
-            "请认真分析这段markdown文本，判断这个文本属于[学术前沿/理论知识/实用技巧/时事评论/故事/其他]中的具体哪一个类型，"
+            "请认真分析这段markdown文本，判断这个文本属于[学术前沿/理论知识/实用技巧/生活百科/时事评论/故事/其他]中的具体哪一个类型，"
             "回答不要加入问候语，只回答类型的名字", 
             md_text
         ])
