@@ -13,13 +13,24 @@ class TextProcessor:
     def process_source(self, md_text, source_dir):
         # 提取标题
         title = None
-        for line in md_text.split('\n'):
+        title_line_index = None
+        lines = md_text.split('\n')
+        
+        for i, line in enumerate(lines):
             stripped = line.strip()
             if stripped.startswith('# '):
                 title = stripped.lstrip('# ').strip()
+                title_line_index = i
                 break
+                
         if not title:
             raise ValueError("未找到标题行（以#开头的行）")
+            
+        # 删除标题行
+        if title_line_index is not None:
+            del lines[title_line_index]
+            md_text = '\n'.join(lines)
+            
         # 处理元数据块
         processed_text = md_text
         metadata_match = re.search(r'^---\n(.*?)\n---', md_text, re.DOTALL)

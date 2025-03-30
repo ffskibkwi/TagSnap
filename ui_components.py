@@ -40,9 +40,13 @@ class MainUI:
         self.display_frame = ttk.Frame(self.main_frame)
         self.display_frame.pack(expand=True, fill='both', pady=5)
 
-        # 显示区域
-        self.display_area = ttk.Label(self.display_frame)
-        self.display_area.pack(expand=True)
+        # 显示区域（使用Text组件替代Label以获得更好的文本控制）
+        self.display_area = tk.Text(self.display_frame, wrap=tk.WORD, 
+                                  font=('Microsoft YaHei', 12),
+                                  borderwidth=0, highlightthickness=0,
+                                  background=self.root.cget('bg'))  # 使用与根窗口相同的背景色
+        self.display_area.pack(expand=True, fill='both')
+        self.display_area.configure(state='disabled')  # 默认禁用编辑
 
         # 状态栏
         self.status = ttk.Label(self.root, text="就绪", foreground="gray")
@@ -88,21 +92,40 @@ class MainUI:
 
     def show_text(self, text):
         """显示文本内容"""
-        self.display_area.config(text=text, image='')
+        # 启用文本框编辑
+        self.display_area.configure(state='normal')
+        
+        # 清空当前内容
+        self.display_area.delete('1.0', tk.END)
+        
+        # 插入新内容
+        self.display_area.insert('1.0', text)
+        
+        # 禁用文本框编辑
+        self.display_area.configure(state='disabled')
+        
         self.update_status("文本内容已显示")
 
     def show_analysis_result(self, text):
         """显示分析结果"""
-        # 设置字体和样式
-        style = ttk.Style()
-        style.configure('Analysis.TLabel', font=('Microsoft YaHei', 12), wraplength=600, justify='left')
+        # 启用文本框编辑
+        self.display_area.configure(state='normal')
         
-        # 配置显示区域
-        self.display_area.config(
-            text=text,
-            image='',
-            style='Analysis.TLabel'
-        )
+        # 清空当前内容
+        self.display_area.delete('1.0', tk.END)
+        
+        # 插入新内容
+        self.display_area.insert('1.0', text)
+        
+        # 文本居中对齐
+        self.display_area.tag_add('center', '1.0', tk.END)
+        self.display_area.tag_configure('center', justify='center')
+        
+        # 设置背景色与窗口一致
+        self.display_area.configure(background=self.root.cget('bg'))
+        
+        # 禁用文本框编辑
+        self.display_area.configure(state='disabled')
         
         self.update_status("分析结果已显示")
 
@@ -137,7 +160,18 @@ class MainUI:
             
             # 创建PhotoImage并显示
             tk_image = ImageTk.PhotoImage(resized_image)
-            self.display_area.config(image=tk_image, text='')
+            
+            # 清空并显示图片
+            self.display_area.configure(state='normal')
+            self.display_area.delete('1.0', tk.END)
+            
+            # 计算居中位置
+            self.display_area.image_create('1.0', image=tk_image, align='center')
+            
+            # 设置背景色与窗口一致
+            self.display_area.configure(background=self.root.cget('bg'))
+            self.display_area.configure(state='disabled')
+            
             self.image_reference = tk_image
             
         except tk.TclError as e:
@@ -169,4 +203,10 @@ class MainUI:
     def show_window(self):
         """显示窗口"""
         self.root.deiconify()
-        self.root.focus_force() 
+        self.root.focus_force()
+
+    def clear_labels(self):
+        """清空底部标签"""
+        self.category_label.config(text="")
+        self.tags_label.config(text="")
+        self.hint_label.config(text="使用 Ctrl+V 粘贴内容") 

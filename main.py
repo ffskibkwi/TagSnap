@@ -144,12 +144,8 @@ class TagSnap:
             # 显示分析结果
             self.ui.show_analysis_result(display_text)
             
-            # 更新UI标签
-            self.ui.update_labels(
-                category.text,
-                tags.text,
-                summary.text
-            )
+            # 清空底部标签
+            self.ui.clear_labels()
             
             # 更新状态
             self.ui.update_status(f"已保存为 {md_filename}")
