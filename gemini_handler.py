@@ -1,14 +1,25 @@
 import os
 import configparser
 import google.generativeai as genai
+import sys
 
 class GeminiHandler:
     def __init__(self):
         # 读取配置文件
         config = configparser.ConfigParser()
-        config_path = os.path.join(os.path.dirname(__file__), 'config.ini')
-        prompt_path = os.path.join(os.path.dirname(__file__), 'prompt.ini')
         
+        # 获取程序运行目录
+        if getattr(sys, 'frozen', False):
+            # 如果是打包后的exe
+            application_path = os.path.dirname(sys.executable)
+        else:
+            # 如果是直接运行python脚本
+            application_path = os.path.dirname(os.path.abspath(__file__))
+            
+        config_path = os.path.join(application_path, 'config.ini')
+        prompt_path = os.path.join(application_path, 'prompt.ini')
+        
+        # 如果配置文件不存在，从打包的资源中复制
         if not os.path.exists(config_path):
             raise FileNotFoundError("配置文件 config.ini 未找到，请创建并配置API密钥")
         if not os.path.exists(prompt_path):

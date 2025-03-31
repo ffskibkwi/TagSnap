@@ -10,6 +10,7 @@ a = Analysis(
     datas=[
         *collect_data_files('google'),  # 包含Google AI依赖
         ('config.ini', '.'),  # 如果有配置文件需要包含
+        ('prompt.ini', '.'),  # 添加prompt.ini文件
     ],
     hiddenimports=[
         'PIL._imagingtk', 

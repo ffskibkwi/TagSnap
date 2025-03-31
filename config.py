@@ -1,9 +1,18 @@
 import os
 import configparser
+import sys
+
+# 获取程序运行目录
+if getattr(sys, 'frozen', False):
+    # 如果是打包后的exe
+    application_path = os.path.dirname(sys.executable)
+else:
+    # 如果是直接运行python脚本
+    application_path = os.path.dirname(os.path.abspath(__file__))
 
 # 读取配置文件
 config = configparser.ConfigParser()
-config_path = os.path.join(os.path.dirname(__file__), 'config.ini')
+config_path = os.path.join(application_path, 'config.ini')
 
 if not os.path.exists(config_path):
     raise FileNotFoundError("配置文件 config.ini 未找到，请创建并配置相关设置")
